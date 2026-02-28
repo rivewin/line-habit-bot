@@ -154,18 +154,18 @@ app = Flask(__name__)
 def home():
     # トップページ（/）にアクセスしたときに返す文字
     return "Render is awake!", 200
+@app.route("/callback", methods=["POST"])
 def callback():
-    # LINEからの署名（改ざん検知のための印）
     signature = request.headers.get("X-Line-Signature", "")
-
-    # 受信した生データ（これが署名チェックにも使われる）
     body = request.get_data(as_text=True)
 
+    # --- ここを追加！ ---
+    print("DEBUG: Webhookを受信しました！中身:", body)
+    # ------------------
 
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
-        # 署名が一致しない＝不正アクセスの可能性 → 400で拒否
         abort(400)
 
     return "OK"
