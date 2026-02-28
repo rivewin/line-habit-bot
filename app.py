@@ -149,16 +149,18 @@ app = Flask(__name__)
 
 
 @app.route("/callback", methods=["POST"])
+
+@app.route('/')
+def home():
+    # トップページ（/）にアクセスしたときに返す文字
+    return "Render is awake!", 200
 def callback():
     # LINEからの署名（改ざん検知のための印）
     signature = request.headers.get("X-Line-Signature", "")
 
     # 受信した生データ（これが署名チェックにも使われる）
     body = request.get_data(as_text=True)
-@app.route('/')
-def home():
-    # トップページ（/）にアクセスしたときに返す文字
-    return "Render is awake!", 200
+
 
     try:
         handler.handle(body, signature)
