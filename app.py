@@ -142,63 +142,57 @@ def start_scheduler_thread() -> None:
     print("INFO: スケジューラ起動（毎日 00:00 / 09:00 にPush）")
 
 
-# ------------------------------------------------------------
+## ------------------------------------------------------------
 # 5) Flask（Webhook受け口）
 # ------------------------------------------------------------
 app = Flask(__name__)
 
-
-@app.route("/callback", methods=["POST"])
-
+# トップページ（Cron-job用）
 @app.route('/')
 def home():
-    # トップページ（/）にアクセスしたときに返す文字
+    print("DEBUG: Top page accessed")
     return "Render is awake!", 200
+
+# LINE Webhook用
 @app.route("/callback", methods=["POST"])
 def callback():
+    # 署名の取得
     signature = request.headers.get("X-Line-Signature", "")
+    # データの取得
     body = request.get_data(as_text=True)
-
-    # --- ここを追加！ ---
-    print("DEBUG: Webhookを受信しました！中身:", body)
-    # ------------------
+    
+    # 【最重要】これがログに出るか確認したい！
+    print("DEBUG: Webhook received!")
+    print(f"DEBUG: Body content: {body[:50]}...") 
 
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
+        print("DEBUG: Invalid signature error")
         abort(400)
+    except Exception as e:
+        print(f"DEBUG: Exception in callback: {e}")
+        return "Internal Error", 500
 
     return "OK"
 
-
 # ------------------------------------------------------------
-# 6) ユーザーがメッセージを送った時の処理（Webhook応答）
+# 6) ユーザーがメッセージを送った時の処理
 # ------------------------------------------------------------
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
-    # 受け取ったメッセージ本文（あなたが送ったタスク）
+    # これがログに出れば、LINEとの連携は成功
+    print("=========================================")
+    print("DEBUG: handle_message start")
+    
     user_text = event.message.text
+    user_id = event.source.user_id if isinstance(event.source, UserSource) else None
 
-    # ここで user_id を取れるのは基本「1:1トーク（友だち追加したボット宛）」の時です
-    user_id = None
-    if isinstance(event.source, UserSource):
-        user_id = event.source.user_id
-
-    # 最初の1回だけ user_id を print & 保存
     if user_id:
-        saved_now = save_user_id_if_needed(user_id)
-        if saved_now:
-            print("====================================================")
-            print("あなたの user_id（Push通知の宛先）を取得しました！")
-            print(user_id)
-            print("↑このIDは大切。外に公開しないでください。")
-            print("====================================================")
+        save_user_id_if_needed(user_id)
+        print(f"DEBUG: User ID = {user_id}")
 
-    # 返信（オウム返し＋受付メッセージ）
-    reply_text = (
-        f"受け取ったタスク：{user_text}\n"
-        "タスクを受け付けました！今日も一日頑張りましょう！"
-    )
+    reply_text = f"受け取ったタスク：{user_text}\n受付完了しました！"
 
     try:
         with ApiClient(configuration) as api_client:
@@ -209,8 +203,11 @@ def handle_message(event):
                     messages=[TextMessage(text=reply_text)],
                 )
             )
+        print("DEBUG: Reply sent successfully")
     except Exception as e:
-        print(f"ERROR: 返信に失敗: {e}")
+        print(f"DEBUG: Reply error: {e}")
+    
+    print("=========================================")
 
 
 # ------------------------------------------------------------
