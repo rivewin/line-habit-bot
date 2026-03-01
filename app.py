@@ -136,7 +136,7 @@ def start_scheduler_thread() -> None:
     # 毎日決まった時刻に実行（PC/サーバーのローカル時刻が基準）
     # renderでずれがあるので9時間ぷらす
     schedule.every().day.at("14:30").do(job_good_night)
-    schedule.every().day.at("0:00").do(job_good_morning)
+    schedule.every().day.at("00:00").do(job_good_morning)
 
     t = threading.Thread(target=scheduler_loop, daemon=True)
     t.start()
